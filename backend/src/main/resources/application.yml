@@ -7,3 +7,8 @@ spring:
     hibernate:
       ddl-auto: validate
     open-in-view: false
+openai:
+  api-key: ${OPENAI_API_KEY:}
+  model: ${OPENAI_MODEL:gpt-4o-mini}
+  connect-timeout: ${OPENAI_CONNECT_TIMEOUT:5s}
+  read-timeout: ${OPENAI_READ_TIMEOUT:30s}

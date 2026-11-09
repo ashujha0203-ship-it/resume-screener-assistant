@@ -63,6 +63,8 @@ Get-Content .env | Where-Object { $_ -match '^[A-Za-z_][A-Za-z0-9_]*=' } | ForEa
 
 This keeps the local password out of tracked files and makes it available to Spring Boot.
 
+The OpenAI API key is optional for starting the backend. To enable AI analysis in a later phase, set `OPENAI_API_KEY` in your local `.env` file. The key is read by the backend only; do not put it in Flutter configuration or source code. The example leaves it blank intentionally.
+
 ## Run the backend
 
 In that same PowerShell terminal, from the project root:
