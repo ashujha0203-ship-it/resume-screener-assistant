@@ -119,28 +119,6 @@ class OpenAiRestClientTest {
     }
 
     @Test
-    void rejectsStructuredOutputContainingNullArrayItems() throws Exception {
-        String invalidOutput = """
-                {
-                  "required_skills":{"rating":90,"rationale":"reason"},
-                  "relevant_experience":{"rating":80,"rationale":"reason"},
-                  "seniority_and_scope":{"rating":70,"rationale":"reason"},
-                  "nice_to_have_skills_and_domain_relevance":{"rating":60,"rationale":"reason"},
-                  "matching_skills":["one","two",null,"four","five"],
-                  "skill_gaps":["one","two","three"],
-                  "interview_questions":["one","two","three"]
-                }
-                """;
-        expectPost().andRespond(withSuccess(responseEnvelope(invalidOutput), MediaType.APPLICATION_JSON));
-
-        assertThatThrownBy(() -> client.analyze(request()))
-                .isInstanceOf(OpenAiClientException.class)
-                .satisfies(exception -> assertThat(((OpenAiClientException) exception).getFailure())
-                        .isEqualTo(OpenAiClientException.Failure.INVALID_RESPONSE));
-        mockServer.verify();
-    }
-
-    @Test
     void rejectsMalformedStructuredJsonWithoutRetry() throws Exception {
         expectPost().andRespond(withSuccess(responseEnvelope("not JSON"), MediaType.APPLICATION_JSON));
 
@@ -361,7 +339,7 @@ class OpenAiRestClientTest {
     }
 
     @Test
-    void rejectsStructuredOutputWithWrongCountsOrOutOfRangeRatings() throws Exception {
+    void parsesProviderShapeWithoutApplyingBusinessValidation() throws Exception {
         String invalidOutput = """
                 {
                   "required_skills":{"rating":101,"rationale":"reason"},
@@ -375,32 +353,10 @@ class OpenAiRestClientTest {
                 """;
         expectPost().andRespond(withSuccess(responseEnvelope(invalidOutput), MediaType.APPLICATION_JSON));
 
-        assertThatThrownBy(() -> client.analyze(request()))
-                .isInstanceOf(OpenAiClientException.class)
-                .satisfies(exception -> assertThat(((OpenAiClientException) exception).getFailure())
-                        .isEqualTo(OpenAiClientException.Failure.INVALID_RESPONSE));
-        mockServer.verify();
-    }
+        OpenAiAnalysisResponse response = client.analyze(request());
 
-    @Test
-    void rejectsStructuredOutputWithMissingCriterionRating() throws Exception {
-        String invalidOutput = """
-                {
-                  "required_skills":{"rationale":"reason"},
-                  "relevant_experience":{"rating":80,"rationale":"reason"},
-                  "seniority_and_scope":{"rating":70,"rationale":"reason"},
-                  "nice_to_have_skills_and_domain_relevance":{"rating":60,"rationale":"reason"},
-                  "matching_skills":["one","two","three","four","five"],
-                  "skill_gaps":["one","two","three"],
-                  "interview_questions":["one","two","three"]
-                }
-                """;
-        expectPost().andRespond(withSuccess(responseEnvelope(invalidOutput), MediaType.APPLICATION_JSON));
-
-        assertThatThrownBy(() -> client.analyze(request()))
-                .isInstanceOf(OpenAiClientException.class)
-                .satisfies(exception -> assertThat(((OpenAiClientException) exception).getFailure())
-                        .isEqualTo(OpenAiClientException.Failure.INVALID_RESPONSE));
+        assertThat(response.requiredSkills().rating()).isEqualTo(101);
+        assertThat(response.matchingSkills()).containsExactly("one");
         mockServer.verify();
     }
 

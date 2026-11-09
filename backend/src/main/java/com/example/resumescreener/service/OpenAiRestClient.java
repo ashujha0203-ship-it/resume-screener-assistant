@@ -197,43 +197,13 @@ public class OpenAiRestClient implements OpenAiAnalysisClient {
                 throw invalidResponse();
             }
 
-            OpenAiAnalysisResponse result = objectMapper
+            return objectMapper
                     .readerFor(OpenAiAnalysisResponse.class)
                     .with(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
                     .readValue(structuredText);
-            validateStructuredResult(result);
-            return result;
         } catch (JsonProcessingException exception) {
             throw invalidResponse();
         }
-    }
-
-    private void validateStructuredResult(OpenAiAnalysisResponse result) {
-        if (result == null
-                || !isValidCriterion(result.requiredSkills())
-                || !isValidCriterion(result.relevantExperience())
-                || !isValidCriterion(result.seniorityAndScope())
-                || !isValidCriterion(result.niceToHaveSkillsAndDomainRelevance())
-                || !hasExpectedItems(result.matchingSkills(), 5)
-                || !hasExpectedItems(result.skillGaps(), 3)
-                || !hasExpectedItems(result.interviewQuestions(), 3)) {
-            throw invalidResponse();
-        }
-    }
-
-    private boolean isValidCriterion(OpenAiAnalysisResponse.CriterionRating criterion) {
-        return criterion != null
-                && criterion.rating() != null
-                && criterion.rating() >= 0
-                && criterion.rating() <= 100
-                && criterion.rationale() != null
-                && !criterion.rationale().isBlank();
-    }
-
-    private boolean hasExpectedItems(List<String> items, int expectedCount) {
-        return items != null
-                && items.size() == expectedCount
-                && items.stream().allMatch(item -> item != null && !item.isBlank());
     }
 
     private boolean isRetryableStatus(int statusCode) {
