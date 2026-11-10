@@ -4,11 +4,15 @@ import java.time.Duration;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
-@ConfigurationProperties(prefix = "openai")
+@ConfigurationProperties(prefix = "gemini")
 public class OpenAiProperties {
 
+    private static final String DEFAULT_ENDPOINT =
+            "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+
     private String apiKey;
-    private String model = "gpt-4o-mini";
+    private String model = "gemini-2.5-flash";
+    private String endpoint = DEFAULT_ENDPOINT;
     private Duration connectTimeout = Duration.ofSeconds(5);
     private Duration readTimeout = Duration.ofSeconds(30);
 
@@ -30,6 +34,14 @@ public class OpenAiProperties {
 
     public void setModel(String model) {
         this.model = model;
+    }
+
+    public String getEndpoint() {
+        return endpoint;
+    }
+
+    public void setEndpoint(String endpoint) {
+        this.endpoint = endpoint;
     }
 
     public Duration getConnectTimeout() {

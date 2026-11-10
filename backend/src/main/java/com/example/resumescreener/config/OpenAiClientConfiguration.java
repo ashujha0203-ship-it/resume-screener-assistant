@@ -9,7 +9,7 @@ import org.springframework.web.client.RestClient;
 public class OpenAiClientConfiguration {
 
     @Bean
-    RestClient openAiHttpClient(RestClient.Builder builder, OpenAiProperties properties) {
+    RestClient geminiHttpClient(RestClient.Builder builder, OpenAiProperties properties) {
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout(properties.getConnectTimeout());
         requestFactory.setReadTimeout(properties.getReadTimeout());

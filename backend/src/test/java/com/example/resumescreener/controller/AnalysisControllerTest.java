@@ -16,10 +16,13 @@ import com.example.resumescreener.exception.InvalidAnalysisQueryException;
 import com.example.resumescreener.exception.OpenAiClientException;
 import com.example.resumescreener.service.AnalysisHistoryService;
 import com.example.resumescreener.service.ResumeAnalysisService;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
@@ -27,6 +30,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -36,6 +40,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(AnalysisController.class)
+@ExtendWith(OutputCaptureExtension.class)
 class AnalysisControllerTest {
 
     @MockitoBean
@@ -215,6 +220,51 @@ class AnalysisControllerTest {
                 .andExpect(jsonPath("$.code").value("AI_NOT_CONFIGURED"))
                 .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.not(
                         org.hamcrest.Matchers.containsString("Internal provider"))));
+    }
+
+    @Test
+    void logsOnlySafeProviderDiagnosticsAndPreservesTheGenericApiError(CapturedOutput output) throws Exception {
+        String sensitiveMarker = "secret-key-resume-job-provider-body";
+        OpenAiClientException httpFailure = new OpenAiClientException(
+                OpenAiClientException.Failure.CLIENT_ERROR,
+                400,
+                sensitiveMarker,
+                OpenAiClientException.DiagnosticCategory.HTTP_CLIENT_ERROR,
+                1,
+                null);
+        OpenAiClientException transportFailure = new OpenAiClientException(
+                OpenAiClientException.Failure.TRANSPORT,
+                null,
+                sensitiveMarker,
+                OpenAiClientException.DiagnosticCategory.TRANSPORT_FAILURE,
+                2,
+                new org.springframework.web.client.ResourceAccessException(sensitiveMarker));
+        when(resumeAnalysisService.analyze(any(ResumeAnalysisRequest.class)))
+                .thenThrow(httpFailure)
+                .thenThrow(transportFailure);
+
+        for (int attempt = 0; attempt < 2; attempt++) {
+            mockMvc.perform(post("/api/analyses")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {"candidateName":null,"jobDescription":"Synthetic job","resume":"Synthetic resume"}
+                                    """))
+                    .andExpect(status().isBadGateway())
+                    .andExpect(jsonPath("$.status").value(502))
+                    .andExpect(jsonPath("$.code").value("AI_PROVIDER_ERROR"))
+                    .andExpect(jsonPath("$.message").value(
+                            "The analysis provider could not complete the request."));
+        }
+
+        assertThat(output.getAll())
+                .contains("category=HTTP_CLIENT_ERROR")
+                .contains("httpStatus=400")
+                .contains("retryAttempt=1")
+                .contains("category=TRANSPORT_FAILURE")
+                .contains("retryAttempt=2")
+                .contains("causeClass=ResourceAccessException")
+                .doesNotContain(sensitiveMarker)
+                .doesNotContain("Authorization");
     }
 
     @Test

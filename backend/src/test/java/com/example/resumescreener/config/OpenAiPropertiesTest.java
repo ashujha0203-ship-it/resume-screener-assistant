@@ -11,6 +11,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class OpenAiPropertiesTest {
 
+    private static final String DEFAULT_ENDPOINT =
+            "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+
     private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
             .withUserConfiguration(OpenAiPropertiesConfiguration.class);
 
@@ -22,7 +25,8 @@ class OpenAiPropertiesTest {
 
             assertThat(properties.getApiKey()).isNull();
             assertThat(properties.isApiKeyConfigured()).isFalse();
-            assertThat(properties.getModel()).isEqualTo("gpt-4o-mini");
+            assertThat(properties.getModel()).isEqualTo("gemini-3.5-flash-lite");
+            assertThat(properties.getEndpoint()).isEqualTo(DEFAULT_ENDPOINT);
             assertThat(properties.getConnectTimeout()).isEqualTo(Duration.ofSeconds(5));
             assertThat(properties.getReadTimeout()).isEqualTo(Duration.ofSeconds(30));
         });
@@ -31,7 +35,7 @@ class OpenAiPropertiesTest {
     @Test
     void treatsBlankApiKeyAsUnconfigured() {
         contextRunner
-                .withPropertyValues("openai.api-key=")
+                .withPropertyValues("gemini.api-key=")
                 .run(context -> {
                     assertThat(context).hasNotFailed();
                     assertThat(context.getBean(OpenAiProperties.class).isApiKeyConfigured()).isFalse();
@@ -42,10 +46,11 @@ class OpenAiPropertiesTest {
     void bindsOptionalApiKeyAndEnvironmentOverrides() {
         contextRunner
                 .withPropertyValues(
-                        "openai.api-key=test-key",
-                        "openai.model=test-model",
-                        "openai.connect-timeout=2s",
-                        "openai.read-timeout=10s")
+                        "gemini.api-key=test-key",
+                        "gemini.model=test-model",
+                        "gemini.endpoint=https://example.test/chat/completions",
+                        "gemini.connect-timeout=2s",
+                        "gemini.read-timeout=10s")
                 .run(context -> {
                     assertThat(context).hasNotFailed();
                     OpenAiProperties properties = context.getBean(OpenAiProperties.class);
@@ -53,6 +58,7 @@ class OpenAiPropertiesTest {
                     assertThat(properties.getApiKey()).isEqualTo("test-key");
                     assertThat(properties.isApiKeyConfigured()).isTrue();
                     assertThat(properties.getModel()).isEqualTo("test-model");
+                    assertThat(properties.getEndpoint()).isEqualTo("https://example.test/chat/completions");
                     assertThat(properties.getConnectTimeout()).isEqualTo(Duration.ofSeconds(2));
                     assertThat(properties.getReadTimeout()).isEqualTo(Duration.ofSeconds(10));
                 });

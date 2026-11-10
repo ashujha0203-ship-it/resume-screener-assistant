@@ -115,6 +115,21 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(OpenAiClientException.class)
     public ResponseEntity<ApiErrorResponse> handleOpenAiClientException(OpenAiClientException exception) {
+        String causeClass = exception.getDiagnosticCategory()
+                        == OpenAiClientException.DiagnosticCategory.TRANSPORT_FAILURE
+                && exception.getCause() != null
+                        ? exception.getCause().getClass().getSimpleName()
+                        : null;
+        LOGGER.warn(
+                "AI provider failure: category={}, httpStatus={}, retryAttempt={}, causeClass={}, "
+                        + "providerErrorCode={}, providerErrorStatus={}",
+                exception.getDiagnosticCategory(),
+                exception.getHttpStatus(),
+                exception.getRetryAttempt(),
+                causeClass,
+                exception.getProviderErrorCode(),
+                exception.getProviderErrorStatus());
+
         return switch (exception.getFailure()) {
             case CONFIGURATION -> error(
                     HttpStatus.SERVICE_UNAVAILABLE,
